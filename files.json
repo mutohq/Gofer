@@ -1,0 +1,20 @@
+[ 
+    {
+        "dir": "/home/anil/go/src/muto_work/notify/develop/test/first.txt",
+        "onchange": "/home/anil/go/src/muto_work/notify/develop/test/anil/a.sh"
+    },
+    {
+        "dir": "/home/anil/go/src/muto_work/notify/develop/test/second.txt",
+        "onchange": "/home/anil/go/src/muto_work/notify/develop/test/anil/b.sh"
+    },
+    {
+        "dir": "/home/anil/go/src/muto_work/notify/develop/test/third.txt",
+        "onchange": "/home/anil/go/src/muto_work/notify/develop/test/anil/c.sh"
+    },
+    {
+        "dir":"/home/anil/go/src/muto_work/notify/develop/test/any.txt",
+        "onchange": "/home/anil/go/src/muto_work/notify/develop/test/anil/d.sh"
+     }    
+    
+]
+
