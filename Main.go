@@ -68,8 +68,7 @@ func monitor(files []File) {
 		jobj["dir"] = m
 		jobj["onchange"] = n
 		eventlist := make(map[string]int64) //to initialise Blank eventlist
-		newfile := observedfile{eventlist: eventlist, address: jobj, expirytimestamp: time.Now().Unix() + 5}
-
+		newfile := observedfile{eventlist: eventlist, address: jobj, flag: false}
 		filelist = append(filelist, newfile)
 		go newfile.watches()
 
@@ -80,51 +79,40 @@ func monitor(files []File) {
 	eventlist := make(map[string]int64)
 	jobj["dir"] = "/home/anil/go/src/muto_work/notify/develop/files.json"
 	jobj["onchange"] = "/home/anil/go/src/muto_work/notify/develop/test/anil/json.sh"
-	jsonfile := observedfile{eventlist: eventlist, address: jobj, expirytimestamp: time.Now().Unix() + 5}
+	jsonfile := observedfile{eventlist: eventlist, address: jobj, flag: false}
 	jsonfile.watches()
 
 }
 
 //***********structure used for creating attributes to monitor file********
 type observedfile struct {
-	eventlist       map[string]int64  // map to store events("MODIFY","DELETE") and their timestamps
-	address         map[string]string //map to store DIR PATH and ONCHANGE EVENT file path map("dir":"onchange")
-	expirytimestamp int64             //time when the watcher has to check event_list(list) and perform associated actions
-	//  ticker *time.Ticker
+	eventlist map[string]int64  // map to store events("MODIFY","DELETE") and their timestamps
+	address   map[string]string //map to store DIR PATH and ONCHANGE EVENT file path map("dir":"onchange")
+	flag      bool
 }
 
 //************functions accessed by only instance of structure i.e. observedfile
 func (obj observedfile) watches() { // calls watcher function
-	obj.expirytimestamp = time.Now().Unix() + 5
 	obj.watch()
 }
 
 func (obj observedfile) execute() { // executes events of the events File
-
-	if obj.eventlist["MODIFY"] > obj.eventlist["DELETE"] {
-
-		out, err := exec.Command(obj.address["onchange"]).Output()
-		if err != nil {
-			log.Fatal(err)
-		}
-		obj.expirytimestamp = time.Now().Unix() + 5
-		fmt.Printf(string(out))
-		delete(obj.eventlist, "MODIFY")
-		delete(obj.eventlist, "DELETE")
-		fmt.Printf("modify event_list executed\n\n")
-	} else {
-		delete(obj.eventlist, "MODIFY")
-		delete(obj.eventlist, "DELETE")
+	fmt.Println("eventlist", obj.eventlist)
+	out, err := exec.Command(obj.address["onchange"]).Output()
+	if err != nil {
+		log.Fatal(err)
 	}
-
+	fmt.Printf(string(out))
+	delete(obj.eventlist, "MODIFY")
+	delete(obj.eventlist, "DELETE")
+	fmt.Printf("event_list executed\n\n")
 }
 
-func (obj observedfile) expire() { //to check expirytimesamp of process
-	// fmt.Println("\nchecking expiry of", obj.address["dir"])
-	if obj.expirytimestamp < time.Now().Unix() { //if time.Now().Unix() > expirytimestamp then execute() the eventlist
-		fmt.Println("\nExpired timestamp of", obj.address["dir"])
-		obj.execute()
-	}
+func (obj observedfile) sync() {
+
+	<-time.After(time.Second * 2)
+	obj.execute()
+	obj.flag = false
 }
 
 //**********function to implement watcher(fsnotify)************
@@ -143,8 +131,8 @@ func (current observedfile) watch() {
 	}
 
 	go func() {
+		current.flag = false
 		for {
-			current.expire() //check expirytimestamp of process
 			select {
 			case ev := <-watcher.Event:
 				if ev.IsModify() {
@@ -154,9 +142,12 @@ func (current observedfile) watch() {
 				if ev.IsDelete() {
 					fmt.Println("event:", ev, " at time:", time.Now())
 					current.eventlist["DELETE"] = time.Now().Unix() //update deletion timestamp  in structure eventlist
-					current.execute()
 					done <- true
-					current.watches()
+					go current.watches()
+				}
+				if current.flag == false {
+					current.flag = true
+					go current.sync()
 				}
 
 			case err := <-watcher.Error:
