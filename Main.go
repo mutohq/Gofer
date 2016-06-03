@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"sync"
 	//"golang.org/x/exp/inotify"
-
 	"time"
 
 	"github.com/howeyc/fsnotify"
@@ -53,7 +52,6 @@ func getFiles() []File {
 //**********MAIN*************
 
 func main() {
-
 	files := getFiles()
 	monitor(files)
 }
@@ -70,7 +68,7 @@ func monitor(files []File) {
 		jobj["dir"] = m
 		jobj["onchange"] = n
 		eventlist := make(map[string]int64) //to initialise Blank eventlist
-		newfile := observedfile{eventlist: eventlist, address: jobj, flag: false}
+		newfile := observedfile{eventlist: eventlist, address: jobj}
 		filelist = append(filelist, newfile)
 		go newfile.watches()
 
@@ -81,7 +79,7 @@ func monitor(files []File) {
 	eventlist := make(map[string]int64)
 	jobj["dir"] = "/home/anil/go/src/muto_work/notify/develop/files.json"
 	jobj["onchange"] = "/home/anil/go/src/muto_work/notify/develop/test/anil/json.sh"
-	jsonfile := observedfile{eventlist: eventlist, address: jobj, flag: false}
+	jsonfile := observedfile{eventlist: eventlist, address: jobj}
 	jsonfile.watches()
 
 }
@@ -90,7 +88,7 @@ func monitor(files []File) {
 type observedfile struct {
 	eventlist map[string]int64  // map to store events("MODIFY","DELETE") and their timestamps
 	address   map[string]string //map to store DIR PATH and ONCHANGE EVENT file path map("dir":"onchange")
-	flag      bool
+	mutex     sync.Mutex
 }
 
 //************functions accessed by only instance of structure i.e. observedfile
@@ -99,24 +97,23 @@ func (obj observedfile) watches() { // calls watcher function
 }
 
 func (obj observedfile) execute() { // executes events of the events File
-	var mutex = &sync.Mutex{}
-	mutex.Lock()
-	fmt.Println("\neventlist of ", obj.address["dir"], " :", obj.eventlist, "at", time.Now().Unix())
-	out, err := exec.Command(obj.address["onchange"]).Output()
-	if err != nil {
-		log.Fatal(err)
+
+	len := len(obj.eventlist) //to check either eventlist is empty or not
+	if len != 0 {
+		fmt.Println("\n\neventlist of ", obj.address["dir"], " :", obj.eventlist, "at", time.Now().Unix())
+		out, err := exec.Command(obj.address["onchange"]).Output()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("\n\nevent_list :", string(out), " : executed on: ", obj.address["dir"], "at", time.Now().Unix())
+		delete(obj.eventlist, "MODIFY")
+		delete(obj.eventlist, "DELETE")
 	}
-	fmt.Printf(string(out))
-	delete(obj.eventlist, "MODIFY")
-	delete(obj.eventlist, "DELETE")
-	fmt.Printf("\nevent_list executed on: ", obj.address["dir"], "at", time.Now().Unix())
-	obj.flag = false
-	mutex.Unlock()
 }
 
 func (obj observedfile) sync() {
 
-	<-time.After(time.Second * 2)
+	<-time.After(time.Millisecond * 200)
 	obj.execute()
 
 }
@@ -132,45 +129,34 @@ func (current observedfile) watch() {
 	done := make(chan bool)
 
 	err = watcher.Watch(current.address["dir"])
-	//	fmt.Printf(" \n  with watcher %#v ", watcher)
 	if err != nil {
 		log.Fatal(err)
 	}
-	var mutex = &sync.Mutex{}
 	go func() {
-		current.flag = false
 		for {
 			select {
 			case ev := <-watcher.Event:
 
-				fmt.Println("\n****************    ", ev.Name, "        ********************")
+				//				fmt.Println("\n****************    ", ev.Name, "        ********************")
 				if ev.IsModify() {
-					fmt.Println("\nevent:", ev, " at time:", time.Now())
-					//fmt.Printf(" \n  with watcher %#v ", watcher)
-					mutex.Lock()
+					//fmt.Println("\nevent:", ev, " at time:", time.Now())
+					current.mutex.Lock()
 					current.eventlist["MODIFY"] = time.Now().Unix() //update modification timestamp  in structure eventlist
-					mutex.Unlock()
-					if current.flag == false {
-						mutex.Lock()
-						current.flag = true
-						mutex.Unlock()
-						go current.sync()
-					}
+					current.mutex.Unlock()
+					current.mutex.Lock()
+					current.sync()
+					current.mutex.Unlock()
 
 				}
 				if ev.IsDelete() {
-					fmt.Println("\nevent:", ev, " at time:", time.Now())
-					mutex.Lock()
+					//fmt.Println("\nevent:", ev, " at time:", time.Now())
+					current.mutex.Lock()
 					current.eventlist["DELETE"] = time.Now().Unix() //update deletion timestamp  in structure eventlist
-					mutex.Unlock()
+					current.mutex.Unlock()
 					watcher.RemoveWatch(current.address["dir"])
-					if current.flag == false {
-						mutex.Lock()
-						current.flag = true
-						mutex.Unlock()
-						// current.execute()
-						go current.sync()
-					}
+					current.mutex.Lock()
+					current.sync()
+					current.mutex.Unlock()
 					done <- true
 					go current.watches()
 
@@ -185,5 +171,5 @@ func (current observedfile) watch() {
 
 	<-done
 
-	fmt.Println("\nwatcher closed on :", current.address["dir"])
+	//	fmt.Println("\nwatcher closed on :", current.address["dir"])
 }
