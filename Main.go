@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	//"golang.org/x/exp/inotify"
 	"time"
@@ -15,93 +16,110 @@ import (
 )
 
 //*********structure to get json data************
+
 type File struct {
-	Dir      string `json:"dir"`
-	Onchange string `json:"onchange"`
+	Dir  string `json:"dir"`
+	Exec string `json:"exec"`
+	Path string `json:"path"`
 }
 
-func (f File) toString() (string, string) {
-	return toJson(f)
-}
-
-//***********to decode json data*******
-func toJson(f File) (string, string) {
-	_, err := json.Marshal(f)
-
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	return f.Dir, f.Onchange
+type config struct {
+	Loc         []File `json:"loc"`
+	Selfobserve bool   `json:"selfobserve"`
 }
 
 //*************function to read json file  (contains direcories tobe monitor and corresponnding action)************
-func getFiles() []File {
-	raw, err := ioutil.ReadFile("./files.json")
+func getFiles(address string) ([]File, bool) {
+	raw, err := ioutil.ReadFile(address)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
-
 	var c []File
-	json.Unmarshal(raw, &c)
-	return c
+	var config_file config
+	json.Unmarshal(raw, &config_file)
+	c = config_file.Loc
+	return c, config_file.Selfobserve
+}
+
+//***********to decode json data*******
+func (f File) getStrings() (string, string, string) {
+	_, err := json.Marshal(f)
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+	return f.Dir, f.Exec, f.Path
 }
 
 //**********MAIN*************
 
 func main() {
-	files := getFiles()
-	monitor(files)
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0])) //getting file path from run time
+	if err != nil {
+		log.Fatal(err)
+	}
+	files, selfobserve := getFiles(dir + "/files.json")
+	var modules []observedfile
+	modules = observercreator(files, dir)
+	startOberver(modules, selfobserve)
 }
 
 //***********function to get files in maps and call watcher********
-func monitor(files []File) {
-
-	//array of structures (to store each file address ,onchange function,timer and other functions)
-	var filelist []observedfile
-
+func observercreator(files []File, dir string) []observedfile {
+	//array of structures (to store each file address ,exec function,timer and other functions)
+	var filesToObserve []observedfile
 	for _, f := range files {
 		jobj := make(map[string]string)
-		m, n := f.toString()
+		m, n, p := f.getStrings()
+		if p == "relative" {
+			m = dir + m
+			n = dir + n
+		}
 		jobj["dir"] = m
-		jobj["onchange"] = n
+		jobj["exec"] = n
 		eventlist := make(map[string]int64) //to initialise Blank eventlist
 		newfile := observedfile{eventlist: eventlist, address: jobj}
-		filelist = append(filelist, newfile)
-		go newfile.watches()
-
+		filesToObserve = append(filesToObserve, newfile)
 	}
+	return filesToObserve
+}
 
-	//**************to monitor .json file
-	jobj := make(map[string]string)
-	eventlist := make(map[string]int64)
-	jobj["dir"] = "/home/anil/go/src/muto_work/notify/develop/files.json"
-	jobj["onchange"] = "/home/anil/go/src/muto_work/notify/develop/test/anil/json.sh"
-	jsonfile := observedfile{eventlist: eventlist, address: jobj}
-	jsonfile.watches()
+func startOberver(filelist []observedfile, selfobserve bool) {
+	if selfobserve {
+		//**************to monitor .json file
+		jobj := make(map[string]string)
+		eventlist := make(map[string]int64)
+		jobj["dir"] = "/home/anil/go/src/Gofer/files.json"
+		jobj["exec"] = "/home/anil/go/src/Gofer/test/anil/json.sh"
+		jsonfile := observedfile{eventlist: eventlist, address: jobj}
+		filelist = append(filelist, jsonfile)
+		for i := 0; i < len(filelist); i++ {
+			go filelist[i].watch()
+		}
+		jsonfile.watch()
 
+	} else { //if not to monitor json file
+		for i := 1; i < len(filelist); i++ {
+			go filelist[i].watch()
+		}
+		filelist[0].watch()
+	}
 }
 
 //***********structure used for creating attributes to monitor file********
 type observedfile struct {
 	eventlist map[string]int64  // map to store events("MODIFY","DELETE") and their timestamps
-	address   map[string]string //map to store DIR PATH and ONCHANGE EVENT file path map("dir":"onchange")
+	address   map[string]string //map to store DIR PATH and exec EVENT file path map("dir":"exec")
 	mutex     sync.Mutex
 }
 
 //************functions accessed by only instance of structure i.e. observedfile
-func (obj observedfile) watches() { // calls watcher function
-	obj.watch()
-}
-
 func (obj observedfile) execute() { // executes events of the events File
-
 	len := len(obj.eventlist) //to check either eventlist is empty or not
 	if len != 0 {
 		fmt.Println("\n\neventlist of ", obj.address["dir"], " :", obj.eventlist, "at", time.Now().Unix())
-		out, err := exec.Command(obj.address["onchange"]).Output()
+		out, err := exec.Command(obj.address["exec"]).Output()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -111,11 +129,10 @@ func (obj observedfile) execute() { // executes events of the events File
 	}
 }
 
+//*************** To synchronize eventlist
 func (obj observedfile) sync() {
-
-	<-time.After(time.Millisecond * 200)
+	<-time.After(time.Millisecond * 200) //wait when an event is fired
 	obj.execute()
-
 }
 
 //**********function to implement watcher(fsnotify)************
@@ -124,10 +141,8 @@ func (current observedfile) watch() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	fmt.Println("\n\nwatching: ", current.address["dir"])
 	done := make(chan bool)
-
 	err = watcher.Watch(current.address["dir"])
 	if err != nil {
 		log.Fatal(err)
@@ -136,7 +151,6 @@ func (current observedfile) watch() {
 		for {
 			select {
 			case ev := <-watcher.Event:
-
 				//				fmt.Println("\n****************    ", ev.Name, "        ********************")
 				if ev.IsModify() {
 					//fmt.Println("\nevent:", ev, " at time:", time.Now())
@@ -146,7 +160,6 @@ func (current observedfile) watch() {
 					current.mutex.Lock()
 					current.sync()
 					current.mutex.Unlock()
-
 				}
 				if ev.IsDelete() {
 					//fmt.Println("\nevent:", ev, " at time:", time.Now())
@@ -158,10 +171,8 @@ func (current observedfile) watch() {
 					current.sync()
 					current.mutex.Unlock()
 					done <- true
-					go current.watches()
-
+					go current.watch()
 				}
-
 			case err := <-watcher.Error:
 				fmt.Println("\nfile checking has error")
 				log.Println("\nerror:", err)

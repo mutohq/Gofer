@@ -1,18 +1,29 @@
-[   {
-        "dir":"/home/anil/go/src/muto_work/notify/develop/test",
-        "onchange": "/home/anil/go/src/muto_work/notify/develop/test/anil/d.sh"
+{
+     "loc" :
+     [
+     {
+        "dir":"/home/anil/go/src/Gofer/test",
+        "exec": "/home/anil/go/src/Gofer/actions/d.sh",
+        "path": "absolute"
      },
      {
-        "dir":"/home/anil/go/src/muto_work/notify/develop/test/first.txt",
-        "onchange": "/home/anil/go/src/muto_work/notify/develop/test/anil/a.sh"
+        "dir":"/test/first.txt",
+        "exec": "/actions/a.sh",
+        "path": "relative"
      },
      {
-        "dir":"/home/anil/go/src/muto_work/notify/develop/test/second.txt",
-        "onchange": "/home/anil/go/src/muto_work/notify/develop/test/anil/b.sh"
+        "dir":"/test/second.txt",
+        "exec": "/actions/b.sh",
+	"path": "relative"
      }, 
     {
-        "dir":"/home/anil/go/src/muto_work/notify/develop/test/third.txt",
-        "onchange": "/home/anil/go/src/muto_work/notify/develop/test/anil/c.sh"
+        "dir":"/home/anil/go/src/Gofer/test/third.txt",
+        "exec": "/home/anil/go/src/Gofer/actions/c.sh",
+	"path": "absolute"
      } 
-]
+     ],
+    
+     "selfobserve" : false
+} 
+
 
