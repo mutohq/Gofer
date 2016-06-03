@@ -62,7 +62,7 @@ func main() {
 	files, selfobserve := getFiles(dir + "/files.json")
 	var modules []observedfile
 	modules = observercreator(files, dir)
-	startOberver(modules, selfobserve)
+	startOberver(modules, dir, selfobserve)
 }
 
 //***********function to get files in maps and call watcher********
@@ -85,15 +85,15 @@ func observercreator(files []File, dir string) []observedfile {
 	return filesToObserve
 }
 
-func startOberver(filelist []observedfile, selfobserve bool) {
+func startOberver(filelist []observedfile, dir string, selfobserve bool) {
 	if selfobserve {
 		//**************to monitor .json file
 		jobj := make(map[string]string)
 		eventlist := make(map[string]int64)
-		jobj["dir"] = "/home/anil/go/src/Gofer/files.json"
-		jobj["exec"] = "/home/anil/go/src/Gofer/test/anil/json.sh"
+		jobj["dir"] = dir + "/files.json"
+		jobj["exec"] = dir + "/actions/json.sh"
 		jsonfile := observedfile{eventlist: eventlist, address: jobj}
-		filelist = append(filelist, jsonfile)
+		//filelist = append(filelist, jsonfile)
 		for i := 0; i < len(filelist); i++ {
 			go filelist[i].watch()
 		}
@@ -103,6 +103,7 @@ func startOberver(filelist []observedfile, selfobserve bool) {
 		for i := 1; i < len(filelist); i++ {
 			go filelist[i].watch()
 		}
+		fmt.Println(filelist[0].address["dir"])
 		filelist[0].watch()
 	}
 }
@@ -127,6 +128,7 @@ func (obj observedfile) execute() { // executes events of the events File
 		delete(obj.eventlist, "MODIFY")
 		delete(obj.eventlist, "DELETE")
 	}
+
 }
 
 //*************** To synchronize eventlist
@@ -147,6 +149,7 @@ func (current observedfile) watch() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// var mutex = &sync.Mutex{}
 	go func() {
 		for {
 			select {
@@ -170,8 +173,8 @@ func (current observedfile) watch() {
 					current.mutex.Lock()
 					current.sync()
 					current.mutex.Unlock()
-					done <- true
 					go current.watch()
+					done <- true
 				}
 			case err := <-watcher.Error:
 				fmt.Println("\nfile checking has error")
@@ -179,8 +182,6 @@ func (current observedfile) watch() {
 			}
 		}
 	}()
-
 	<-done
-
-	//	fmt.Println("\nwatcher closed on :", current.address["dir"])
+	fmt.Println("\nwatcher closed on :", current.address["dir"])
 }
