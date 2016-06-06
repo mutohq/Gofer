@@ -57,17 +57,21 @@ func (f File) getStrings() (string, string, string) {
 func main() {
 	var err error
 	dir, err = filepath.Abs(filepath.Dir(os.Args[0])) //getting file path from run time
+	fmt.Println("DIR:", dir)
 	if err != nil {
 		log.Fatal(err)
 	}
+	globallock.Lock()
 	files, selfobserve := getFiles(dir + "/files.json")
 
 	reqmap = observercreator(files)
+	globallock.Unlock()
 	startOberver(selfobserve)
 }
 
 var reqmap map[string]observedfile
 var dir string
+var globallock = &sync.Mutex{}
 
 //***********function to get files in maps and call watcher********
 func observercreator(files []File) map[string]observedfile {
@@ -104,7 +108,9 @@ func startOberver(selfobserve bool) {
 		for _, value := range reqmap {
 			go value.watch()
 		}
+		globallock.Lock()
 		reqmap[dir+"/files.json"] = jsonfile
+		globallock.Unlock()
 		jsonfile.watch()
 
 	} else { //if not to monitor json file
@@ -133,6 +139,11 @@ func (obj observedfile) execute() { // executes events of the events File
 	if len != 0 {
 		if obj.address["dir"] == dir+"/files.json" {
 			destroytillnow()
+			globallock.Lock()
+			for key, _ := range reqmap {
+				delete(reqmap, key)
+			}
+			globallock.Unlock()
 			main()
 		}
 
@@ -144,6 +155,7 @@ func (obj observedfile) execute() { // executes events of the events File
 		fmt.Printf("\n\nevent_list :", string(out), " : executed on: ", obj.address["dir"], "at", time.Now().Unix())
 		delete(obj.eventlist, "MODIFY")
 		delete(obj.eventlist, "DELETE")
+		fmt.Println("\n\n\n\n", reqmap)
 	}
 
 }
