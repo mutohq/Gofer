@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
-	//"golang.org/x/exp/inotify"
 	"time"
 
 	"github.com/howeyc/fsnotify"
@@ -56,34 +55,32 @@ func (f File) getStrings() (string, string, string) {
 
 func main() {
 	var err error
-	dir, err = filepath.Abs(filepath.Dir(os.Args[0])) //getting file path from run time
+	workingdir, err = filepath.Abs(filepath.Dir(os.Args[0])) //getting file path from run time
 	if err != nil {
 		log.Fatal(err)
 	}
-	files, selfobserve := getFiles(dir + "/files.json")
+	files, selfobserve := getFiles(workingdir + "/files.json")
 
 	reqmap = observercreator(files)
 	startOberver(selfobserve)
 }
 
 var reqmap map[string]observedfile
-var dir string
+var workingdir string
 
 //***********function to get files in maps and call watcher********
 func observercreator(files []File) map[string]observedfile {
 	//array of structures (to store each file address ,exec function,timer and other functions)
 	temp := make(map[string]observedfile)
 	for _, f := range files {
-		jobj := make(map[string]string)
 		m, n, p := f.getStrings()
 		if p == "relative" {
-			m = dir + m
-			n = dir + n
+			m = workingdir + m
+			n = workingdir + n
 		}
-		jobj["dir"] = m
-		jobj["exec"] = n
+
 		eventlist := make(map[string]int64) //to initialise Blank eventlist
-		newfile := observedfile{eventlist: eventlist, address: jobj}
+		newfile := observedfile{eventlist: eventlist, onchange: n}
 		temp[m] = newfile
 
 	}
@@ -93,89 +90,81 @@ func observercreator(files []File) map[string]observedfile {
 func startOberver(selfobserve bool) {
 	if selfobserve {
 		//**************to monitor .json file
-
-		jobj := make(map[string]string)
-		eventlist := make(map[string]int64)
-		jobj["dir"] = dir + "/files.json"
-		jobj["exec"] = dir + "/actions/json.sh"
-
-		jsonfile := observedfile{eventlist: eventlist, address: jobj}
-
-		for _, value := range reqmap {
-			go value.watch()
+		jsonobj := observedfile{onchange: workingdir + "/actions/json.sh"}
+		for key, value := range reqmap {
+			go value.watch(key)
 		}
-		reqmap[dir+"/files.json"] = jsonfile
-		jsonfile.watch()
+		reqmap[workingdir+"/files.json"] = jsonobj
+		jsonobj.watch(workingdir + "/files.json")
 
 	} else { //if not to monitor json file
 		i := 0
-		for _, value := range reqmap {
+		for key, value := range reqmap {
 			if i == len(reqmap) {
-				value.watch()
+				value.watch(key)
 			}
 			i++
-			go value.watch()
+			go value.watch(key)
 		}
 	}
 }
 
 //***********structure used for creating attributes to monitor file********
 type observedfile struct {
-	eventlist map[string]int64  // map to store events("MODIFY","DELETE") and their timestamps
-	address   map[string]string //map to store DIR PATH and exec EVENT file path map("dir":"exec")
+	eventlist map[string]int64 // map to store events("MODIFY","DELETE") and their timestamps
+	onchange  string           //map to store workingdir PATH and exec EVENT file path map("workingdir":"exec")
 	mutex     sync.Mutex
 	mywatcher *fsnotify.Watcher
 }
 
 //************functions accessed by only instance of structure i.e. observedfile
-func (obj observedfile) execute() { // executes events of the events File
-	len := len(obj.eventlist) //to check either eventlist is empty or not
+func execute(obj string) { // executes events of the events File
+	len := len(reqmap[obj].eventlist) //to check either eventlist is empty or not
 	if len != 0 {
-		if obj.address["dir"] == dir+"/files.json" {
+		if obj == workingdir+"/files.json" {
 			destroytillnow()
 			main()
 		}
 
-		fmt.Println("\n\neventlist of ", obj.address["dir"], " :", obj.eventlist, "at", time.Now().Unix())
-		out, err := exec.Command(obj.address["exec"]).Output()
+		// fmt.Println("\n\neventlist of ", obj.address["workingdir"], " :", obj.eventlist, "at", time.Now().Unix())
+		out, err := exec.Command(reqmap[obj].onchange).Output()
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("\n\nevent_list :", string(out), " : executed on: ", obj.address["dir"], "at", time.Now().Unix())
-		delete(obj.eventlist, "MODIFY")
-		delete(obj.eventlist, "DELETE")
+		fmt.Printf("\n\nevent_list :", string(out), " : executed on: ", obj, "at", time.Now().Unix())
+		delete(reqmap[obj].eventlist, "MODIFY")
+		delete(reqmap[obj].eventlist, "DELETE")
 	}
 
 }
 func destroytillnow() {
 	for _, value := range reqmap {
 		fmt.Println("REMOVING WATCHER::", value.mywatcher)
-		value.mywatcher.RemoveWatch(value.address["dir"])
+		// value.mywatcher.RemoveWatch(key)
 
 	}
 }
 
 //*************** To synchronize eventlist
-func (obj observedfile) sync() {
+func queue(obj string) {
 	<-time.After(time.Millisecond * 200) //wait when an event is fired
-	obj.execute()
+	execute(obj)
 }
 
 //**********function to implement watcher(fsnotify)************
-func (current observedfile) watch() {
-
+func (current observedfile) watch(obj string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("\n\nwatching: ", current.address["dir"])
+	fmt.Println("\n\nwatching: ", obj)
 	done := make(chan bool)
-	err = watcher.Watch(current.address["dir"])
+	err = watcher.Watch(obj)
 	if err != nil {
 		log.Fatal(err)
 	}
 	current.mywatcher = watcher
-	reqmap[current.address["dir"]] = current
+	reqmap[obj] = current
 	// fmt.Println(current.mywatcher)
 
 	go func() {
@@ -189,7 +178,7 @@ func (current observedfile) watch() {
 					current.eventlist["MODIFY"] = time.Now().Unix() //update modification timestamp  in structure eventlist
 					current.mutex.Unlock()
 					current.mutex.Lock()
-					current.sync()
+					queue(obj)
 					current.mutex.Unlock()
 				}
 				if ev.IsDelete() {
@@ -197,11 +186,11 @@ func (current observedfile) watch() {
 					current.mutex.Lock()
 					current.eventlist["DELETE"] = time.Now().Unix() //update deletion timestamp  in structure eventlist
 					current.mutex.Unlock()
-					watcher.RemoveWatch(current.address["dir"])
+					watcher.RemoveWatch(obj)
 					current.mutex.Lock()
-					current.sync()
+					queue(obj)
 					current.mutex.Unlock()
-					go current.watch()
+					go current.watch(obj)
 					done <- true
 				}
 			case err := <-watcher.Error:
@@ -211,5 +200,5 @@ func (current observedfile) watch() {
 		}
 	}()
 	<-done
-	fmt.Println("\nwatcher closed on :", current.address["dir"])
+	fmt.Println("\nwatcher closed on :", obj)
 }
