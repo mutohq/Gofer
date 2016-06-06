@@ -55,20 +55,24 @@ func (f File) getStrings() (string, string, string) {
 //**********MAIN*************
 
 func main() {
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0])) //getting file path from run time
+	var err error
+	dir, err = filepath.Abs(filepath.Dir(os.Args[0])) //getting file path from run time
 	if err != nil {
 		log.Fatal(err)
 	}
 	files, selfobserve := getFiles(dir + "/files.json")
-	var modules []observedfile
-	modules = observercreator(files, dir)
-	startOberver(modules, dir, selfobserve)
+
+	reqmap = observercreator(files)
+	startOberver(selfobserve)
 }
 
+var reqmap map[string]observedfile
+var dir string
+
 //***********function to get files in maps and call watcher********
-func observercreator(files []File, dir string) []observedfile {
+func observercreator(files []File) map[string]observedfile {
 	//array of structures (to store each file address ,exec function,timer and other functions)
-	var filesToObserve []observedfile
+	temp := make(map[string]observedfile)
 	for _, f := range files {
 		jobj := make(map[string]string)
 		m, n, p := f.getStrings()
@@ -80,31 +84,38 @@ func observercreator(files []File, dir string) []observedfile {
 		jobj["exec"] = n
 		eventlist := make(map[string]int64) //to initialise Blank eventlist
 		newfile := observedfile{eventlist: eventlist, address: jobj}
-		filesToObserve = append(filesToObserve, newfile)
+		temp[m] = newfile
+
 	}
-	return filesToObserve
+	return temp
 }
 
-func startOberver(filelist []observedfile, dir string, selfobserve bool) {
+func startOberver(selfobserve bool) {
 	if selfobserve {
 		//**************to monitor .json file
+
 		jobj := make(map[string]string)
 		eventlist := make(map[string]int64)
 		jobj["dir"] = dir + "/files.json"
 		jobj["exec"] = dir + "/actions/json.sh"
+
 		jsonfile := observedfile{eventlist: eventlist, address: jobj}
-		//filelist = append(filelist, jsonfile)
-		for i := 0; i < len(filelist); i++ {
-			go filelist[i].watch()
+
+		for _, value := range reqmap {
+			go value.watch()
 		}
+		reqmap[dir+"/files.json"] = jsonfile
 		jsonfile.watch()
 
 	} else { //if not to monitor json file
-		for i := 1; i < len(filelist); i++ {
-			go filelist[i].watch()
+		i := 0
+		for _, value := range reqmap {
+			if i == len(reqmap) {
+				value.watch()
+			}
+			i++
+			go value.watch()
 		}
-		fmt.Println(filelist[0].address["dir"])
-		filelist[0].watch()
 	}
 }
 
@@ -113,12 +124,18 @@ type observedfile struct {
 	eventlist map[string]int64  // map to store events("MODIFY","DELETE") and their timestamps
 	address   map[string]string //map to store DIR PATH and exec EVENT file path map("dir":"exec")
 	mutex     sync.Mutex
+	mywatcher *fsnotify.Watcher
 }
 
 //************functions accessed by only instance of structure i.e. observedfile
 func (obj observedfile) execute() { // executes events of the events File
 	len := len(obj.eventlist) //to check either eventlist is empty or not
 	if len != 0 {
+		if obj.address["dir"] == dir+"/files.json" {
+			destroytillnow()
+			main()
+		}
+
 		fmt.Println("\n\neventlist of ", obj.address["dir"], " :", obj.eventlist, "at", time.Now().Unix())
 		out, err := exec.Command(obj.address["exec"]).Output()
 		if err != nil {
@@ -130,6 +147,13 @@ func (obj observedfile) execute() { // executes events of the events File
 	}
 
 }
+func destroytillnow() {
+	for _, value := range reqmap {
+		fmt.Println("REMOVING WATCHER::", value.mywatcher)
+		value.mywatcher.RemoveWatch(value.address["dir"])
+
+	}
+}
 
 //*************** To synchronize eventlist
 func (obj observedfile) sync() {
@@ -139,6 +163,7 @@ func (obj observedfile) sync() {
 
 //**********function to implement watcher(fsnotify)************
 func (current observedfile) watch() {
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -149,7 +174,10 @@ func (current observedfile) watch() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// var mutex = &sync.Mutex{}
+	current.mywatcher = watcher
+	reqmap[current.address["dir"]] = current
+	// fmt.Println(current.mywatcher)
+
 	go func() {
 		for {
 			select {

@@ -15,11 +15,6 @@
         "dir":"/test/second.txt",
         "exec": "/actions/b.sh",
 	"path": "relative"
-     }, 
-    {
-        "dir":"/home/anil/go/src/Gofer/test/third.txt",
-        "exec": "/home/anil/go/src/Gofer/actions/c.sh",
-	"path": "absolute"
      } 
      ],
     
