@@ -1,27 +1,27 @@
 # Gofer
 A slave that runs tasks on the basis of every file/directory change.
 
-# What does it do?
+### What does it do?
 Simply put, it runs an executable (shell script, or a binary) every time 
 a file's/directory's content changes.
 
-# How does it know something has changed?
+### How does it know something has changed?
 It is based on inotify (on Linux), and FSEvents (on Mac), and uses the 
 excellent [fsnotify](https://github.com/howeyc/fsnotify) package under 
 the hood.
 
-# What platforms does it run on?
+### What platforms does it run on?
 It runs well on Linux (Ubuntu has been tested), and Mac. Haven't checked 
 on Windows, but since [fsnotify](https://github.com/howeyc/fsnotify) is 
 a cross-platform library, there's no reason why it shouldn't run on 
 Windows.
 
-# Show me how to run this thing!
+### Show me how to run this thing!
 1. Download the binary, or download the source code and build your own 
 binary.
 2. `gofer {MENTION YOUR CONFIG FILE HERE}`
 
-# How does the Config file look like?
+### How does the Config file look like?
 A Gofer config file is a valid JSON file that consists of the following 
 parameters:
 ```
@@ -37,7 +37,7 @@ parameters:
 ]
 ```
 
-# OK, but what's a SourceJSON file?
+### OK, but what's a SourceJSON file?
 A SourceJSON file is another valid JSON file that consists of all the 
 files and folders to monitor, as well as the scripts that are supposed 
 to run when they change. The structure of each SourceJSON file is as 
@@ -77,7 +77,8 @@ relative or absolute. If `path` is `relative`, then the `exec` path is
 resolved relative to the `dir` path. If `path` is `absolute`, the `exec` 
 path is resolved as the absolute path.
 
-# What's the difference between a Gofer Config file and a SourceJSON file?
+### What's the difference between a Gofer Config file and a SourceJSON 
+file?
 A Gofer Config file consists of all INDEPENDENT SourceJSON files that 
 need to be observed. It's kinda like configuring Nginx/Apache to serve 
 multiple websites on the same server. It lends the flexibility of 
@@ -87,7 +88,7 @@ maintenance a lot cleaner.
 A SourceJSON file would consist of all the rules for a particular 
 logical project.
 
-# Why would anyone need Gofer?
+### Why would anyone need Gofer?
 Gofer would make a developer's life easier, by running a particular 
 script. For e.g., if a source file has changed, Gofer could be 
 configured to create a new build immediately. Or, it could be configured 
@@ -96,13 +97,13 @@ Gofer is monitoring a database (such as PostgreSQL), it can be
 configured to sync the WAL file with a remote server. The possibilities 
 are endless. 
 
-# Wouldn't it be using a lot of CPU cycles?
+### Wouldn't it be using a lot of CPU cycles?
 Not really. On Linux (the main targeted platform), it is based on 
 inotify, and hence, is very light. Gofer would only run the `exec` 
 script when there's a change. Will update this with more data once 
 comprehensive tests have run.
 
-# What is the current version?
+### What is the current version?
 Gofer is currently pre-alpha. It would be safe to say that it isn't 
 ready for production yet. But, it should fly when used for personal 
 tasks.
