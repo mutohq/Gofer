@@ -20,7 +20,12 @@
         "dir":"/test/third.txt",
         "exec": "/actions/c.sh",
 	"path": "relative"
-     }  
+     },
+     {
+        "dir":"/test/any.txt",
+        "exec": "/actions/d.sh",
+	"path": "relative"
+     }   
      ],
     
      "selfobserve" : true
