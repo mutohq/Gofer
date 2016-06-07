@@ -45,7 +45,7 @@ follows:
 
 ```
 {
-	"paths" : [
+	"loc" : [
 		{
 			"dir" : "{{Absolute Path name of the file or directory to 
 			monitor}}",
@@ -69,7 +69,7 @@ reload the SourceJSON file in case there's a change in it. This is so
 that another program could probably keep appending to the SourceJSON 
 file, and Gofer would automatically adjust.
 
-`paths` is an array that consists of the rules for a particular source 
+`loc` is an array that consists of the rules for a particular source 
 file/directory (`dir`), an `exec` string that holds the path of the 
 executable that is fired when there's a modification in `dir`, and a 
 `path` parameter that mentions if the `dir` and the `exec` paths are 
