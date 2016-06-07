@@ -56,6 +56,7 @@ func (f File) getStrings() (string, string, string) {
 func main() {
 	var err error
 	workingdir, err = filepath.Abs(filepath.Dir(os.Args[0])) //getting file path from run time
+	fmt.Println(workingdir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -151,7 +152,7 @@ func destroytillnow() {
 		fmt.Println("REMOVING WATCHER on::", key)
 		// value.mywatcher.RemoveWatch(key)
 	}
-
+	<-time.After(time.Second * 2) //time given to stop all concurrently running watchers
 	for key, _ := range reqmap {
 		globallock.Lock()
 		delete(reqmap, key)
