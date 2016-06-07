@@ -155,7 +155,6 @@ func (obj observedfile) execute() { // executes events of the events File
 		fmt.Printf("\n\nevent_list :", string(out), " : executed on: ", obj.address["dir"], "at", time.Now().Unix())
 		delete(obj.eventlist, "MODIFY")
 		delete(obj.eventlist, "DELETE")
-		fmt.Println("\n\n\n\n", reqmap)
 	}
 
 }
@@ -165,6 +164,7 @@ func destroytillnow() {
 		value.mywatcher.RemoveWatch(value.address["dir"])
 
 	}
+	<-time.After(time.Second * 2)
 }
 
 //*************** To synchronize eventlist
