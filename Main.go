@@ -96,7 +96,8 @@ func observercreator(files []File) map[string]observedfile {
 func startOberver(selfobserve bool) {
 	if selfobserve {
 		//**************to monitor .json file
-		jsonobj := observedfile{onchange: workingdir + "/actions/json.sh"}
+		eventlist := make(map[string]int64)
+		jsonobj := observedfile{eventlist: eventlist, onchange: workingdir + "/actions/json.sh"}
 		for key, value := range reqmap {
 			go value.watch(key)
 		}
@@ -131,6 +132,7 @@ type observedfile struct {
 func execute(obj string) { // executes events of the events File
 	len := len(reqmap[obj].eventlist) //to check either eventlist is empty or not
 	if len != 0 {
+		fmt.Println("inevent executioin")
 		if obj == workingdir+"/files.json" {
 			destroytillnow()
 			main()
@@ -143,16 +145,15 @@ func execute(obj string) { // executes events of the events File
 		fmt.Printf("\n\nevent_list :", string(out), " : executed on: ", obj, "at", time.Now().Unix())
 		delete(reqmap[obj].eventlist, "MODIFY")
 		delete(reqmap[obj].eventlist, "DELETE")
-		fmt.Println("\n\n", reqmap)
 	}
 
 }
 func destroytillnow() {
-	// for key, _ := range reqmap {
-	// 	fmt.Println("REMOVING WATCHER on::", key)
-	// 	// value.mywatcher.RemoveWatch(key)
-	// }
-	<-time.After(time.Second * 2) //time given to stop all concurrently running watchers
+	for key, value := range reqmap {
+		fmt.Println("\n\nREMOVING WATCHER :", value.mywatcher)
+		value.mywatcher.RemoveWatch(key)
+	}
+	<-time.After(time.Second * 3) //time given to stop all concurrently running watchers
 
 	for key, _ := range reqmap { //delete the previous values of reqmap
 		globallock.Lock()
@@ -177,10 +178,14 @@ func (current observedfile) watch(obj string) {
 	}
 	fmt.Println("\n\nwatching: ", obj)
 	done := make(chan bool)
+
 	err = watcher.Watch(obj)
 	if err != nil {
+		fmt.Println(obj)
+
 		log.Fatal(err)
 	}
+
 	current.mywatcher = watcher
 	reqmap[obj] = current
 	// fmt.Println(current.mywatcher)
@@ -193,9 +198,14 @@ func (current observedfile) watch(obj string) {
 
 				//				fmt.Println("\n****************    ", ev.Name, "        ********************")
 				if ev.IsModify() {
-					//fmt.Println("\nevent:", ev, " at time:", time.Now())
+					fmt.Println("\nevent:", ev, " at time:", time.Now())
+
 					current.mutex.Lock()
+					fmt.Println("before updating eventlist")
+					fmt.Println(current.eventlist)
 					current.eventlist["MODIFY"] = time.Now().Unix() //update modification timestamp  in structure eventlist
+					fmt.Println("after updating eventlist")
+					fmt.Println(current.eventlist)
 					current.mutex.Unlock()
 
 					current.mutex.Lock()
@@ -204,7 +214,7 @@ func (current observedfile) watch(obj string) {
 
 				}
 				if ev.IsDelete() {
-					//fmt.Println("\nevent:", ev, " at time:", time.Now())
+					fmt.Println("\nevent:", ev, " at time:", time.Now())
 					current.mutex.Lock()
 					current.eventlist["DELETE"] = time.Now().Unix() //update deletion timestamp  in structure eventlist
 					current.mutex.Unlock()
