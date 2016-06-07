@@ -148,12 +148,13 @@ func execute(obj string) { // executes events of the events File
 
 }
 func destroytillnow() {
-	for key, _ := range reqmap {
-		fmt.Println("REMOVING WATCHER on::", key)
-		// value.mywatcher.RemoveWatch(key)
-	}
+	// for key, _ := range reqmap {
+	// 	fmt.Println("REMOVING WATCHER on::", key)
+	// 	// value.mywatcher.RemoveWatch(key)
+	// }
 	<-time.After(time.Second * 2) //time given to stop all concurrently running watchers
-	for key, _ := range reqmap {
+
+	for key, _ := range reqmap { //delete the previous values of reqmap
 		globallock.Lock()
 		delete(reqmap, key)
 		globallock.Unlock()
@@ -208,7 +209,7 @@ func (current observedfile) watch(obj string) {
 					current.eventlist["DELETE"] = time.Now().Unix() //update deletion timestamp  in structure eventlist
 					current.mutex.Unlock()
 
-					current.mywatcher.RemoveWatch(obj)
+					watcher.RemoveWatch(obj)
 
 					current.mutex.Lock()
 					queue(obj)
