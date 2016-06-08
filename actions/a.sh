@@ -1,2 +1,2 @@
 #!/bin/bash
-echo "postgres has been updated"
+echo "a.sh has sucessfully executed"
