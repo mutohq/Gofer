@@ -1,0 +1,19 @@
+{
+     "loc" :
+     [
+     {
+        "dir":"/home/anil/go/src/Gofer/test/first.txt",
+        "exec": "/home/anil/go/src/Gofer/actions/a.sh",
+        "path": "absolute"
+     },
+     {
+        "dir":"/home/anil/go/src/Gofer/test/second.txt",
+        "exec": "/home/anil/go/src/Gofer/actions/b.sh",
+	"path": "absolute"
+     }   
+     ],
+    
+     "selfobserve" : true
+} 
+
+

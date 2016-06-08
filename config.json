@@ -1,0 +1,11 @@
+[ 
+ 
+ {  "source"   : "/home/anil/go/src/Gofer/jsons/files1.json",
+    "log_file" : "/home/anil/go/src/Gofer/logs/log_files1.log"
+ },
+  { "source"   : "/home/anil/go/src/Gofer/jsons/files.json",
+   "log_file" : "/home/anil/go/src/Gofer/logs/log_files.log"
+ }
+
+]
+

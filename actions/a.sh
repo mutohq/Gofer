@@ -1,2 +1,2 @@
 #!/bin/bash
-echo "a.sh"
+echo "a.sh has sucessfully executed"

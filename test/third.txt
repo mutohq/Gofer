@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 third.txtthird.txtthird.txt
+=======
+third.txtthird.txtthird.txtthird.txtthird.txtdadadsasdalsdkaslkdadasdaasdadasdadas
+>>>>>>> Deletions

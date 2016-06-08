@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 sankfjbdsfhsbjfbjdajsdkasbdjhbasjdhbjsbfsecond.txtsecond.txt
+=======
+second.txtsecond.txtdadasddasdas
+>>>>>>> Deletions
