@@ -1,0 +1,19 @@
+{
+     "loc" :
+     [
+     {
+        "dir":"/test/first.txt",
+        "exec": "/actions/a.sh",
+        "path": "relative"
+     },
+     {
+        "dir":"/test/second.txt",
+        "exec": "/actions/b.sh",
+	"path": "relative"
+     }   
+     ],
+    
+     "selfobserve" : true
+} 
+
+
