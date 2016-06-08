@@ -2,14 +2,14 @@
      "loc" :
      [
      {
-        "dir":"/test/first.txt",
-        "exec": "/actions/a.sh",
-        "path": "relative"
+        "dir":"/home/anil/go/src/Gofer/test/first.txt",
+        "exec": "/home/anil/go/src/Gofer/actions/a.sh",
+        "path": "absolute"
      },
      {
-        "dir":"/test/second.txt",
-        "exec": "/actions/b.sh",
-	"path": "relative"
+        "dir":"/home/anil/go/src/Gofer/test/second.txt",
+        "exec": "/home/anil/go/src/Gofer/actions/b.sh",
+	"path": "absolute"
      }   
      ],
     

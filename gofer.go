@@ -124,11 +124,11 @@ func recordmapinsertion(jsonfile string) {
 	globallock.Lock()
 	// fmt.Println("acuired globallock")
 	for _, f := range files {
-		m, n, p := f.getStrings()
-		if p == "relative" {
-			m = workingdir + m
-			n = workingdir + n
-		}
+		m, n, _ := f.getStrings()
+		// if p == "relative" {          //code used for relative paths (relative to working direcory of binary)
+		// 	m = workingdir + m
+		// 	n = workingdir + n
+		// }
 		channel := make(chan bool)
 		eventlist := make(map[string]int64) //to initialise Blank eventlist
 		recordmap[m] = observedfile{eventlist: eventlist, onchange: n, done: channel, parent: jsonfile}
