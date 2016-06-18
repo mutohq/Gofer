@@ -14,6 +14,13 @@ import (
 	"github.com/howeyc/fsnotify"
 )
 
+//global varibles
+var configpath string                   //variable for path of config.json file
+var logrecord = make(map[string]string) //it maps .json file to corresponding logrecord file
+// var selfoberverrec = make(map[string]bool)    //it contains selfoberver corresponding to a particular .json file
+var recordmap = make(map[string]observedfile) //map to record all ongoing watchers
+var workingdir string                         //to get initial working directory
+var globallock = &sync.Mutex{}                //global lock to save global values from concurrency
 //*********structure to get json data************
 
 type File struct {
@@ -131,6 +138,12 @@ func recordmapinsertion(jsonfile string) {
 		// }
 		channel := make(chan bool)
 		eventlist := make(map[string]int64) //to initialise Blank eventlist
+		flag, _ := exists(m)
+		if !flag {
+			msg := "file does not exists"
+			updatelog(m, jsonfile, msg)
+			continue
+		}
 		recordmap[m] = observedfile{eventlist: eventlist, onchange: n, done: channel, parent: jsonfile}
 	}
 	globallock.Unlock()
@@ -149,13 +162,6 @@ func recordmapinsertion(jsonfile string) {
 		globallock.Unlock()
 	}
 }
-
-var configpath string                   //variable for path of config.json file
-var logrecord = make(map[string]string) //it maps .json file to corresponding logrecord file
-// var selfoberverrec = make(map[string]bool)    //it contains selfoberver corresponding to a particular .json file
-var recordmap = make(map[string]observedfile) //map to record all ongoing watchers
-var workingdir string                         //to get initial working directory
-var globallock = &sync.Mutex{}                //global lock to save global values from concurrency
 
 //******************function to startobserver on recordmap values *************
 func startObserver(jsonkey string) {
@@ -341,13 +347,25 @@ func (current observedfile) destroytillnow() {
 
 }
 
+// exists returns whether the given file or directory exists or not
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
+}
+
 //************function to update logs corresponding to  .json files
 func updatelog(obj string, parent string, out string) {
 	// open a file
 	f, err := os.OpenFile(logrecord[parent], os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	// fmt.Println(logrecord[parent])
 	if err != nil {
-		fmt.Printf("error opening file: %v", err)
+		// fmt.Printf("error opening file: %v", err)
 	}
 
 	// don't forget to close it
