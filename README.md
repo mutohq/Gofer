@@ -1,4 +1,6 @@
 # Gofer
+
+[![Join the chat at https://gitter.im/mutohq/Gofer](https://badges.gitter.im/mutohq/Gofer.svg)](https://gitter.im/mutohq/Gofer?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 A slave that runs tasks on the basis of every file/directory change.
 
 ### What does it do?
