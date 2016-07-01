@@ -21,7 +21,6 @@ for i in range(random.randint(5,10)):
 	for f in files_list:
 		print ("opening file %s"%f)
 		time.sleep(5)
-		#fl = open(f, "w")
 		with open(f,"w") as fl : 
 
 			#text = fl.read()
